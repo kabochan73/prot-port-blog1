@@ -81,6 +81,12 @@ export default function AdminPage() {
                   >
                     表示
                   </Link>
+                  <Link
+                    href={`/admin/edit/${post.slug}`}
+                    className="text-sm text-blue-500 hover:text-blue-700"
+                  >
+                    編集
+                  </Link>
                   <button
                     onClick={() => handleDelete(post.slug)}
                     className="text-sm text-red-400 hover:text-red-600"
