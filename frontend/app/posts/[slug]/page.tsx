@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { serverApi } from "@/lib/axios";
 import Header from "@/components/Header";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 import type { Post } from "@/types";
 
 // ISR: 60秒ごとに再生成
@@ -70,10 +71,7 @@ export default async function PostPage({ params }: Props) {
             </div>
           </header>
 
-          {/* 記事本文: 改行を<br>に変換して表示 */}
-          <div className="prose max-w-none text-gray-700 leading-8 whitespace-pre-wrap">
-            {post.body}
-          </div>
+          <MarkdownRenderer content={post.body} />
         </article>
 
         <div className="mt-12">
