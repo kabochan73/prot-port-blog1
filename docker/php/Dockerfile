@@ -1,6 +1,6 @@
 # PHP 8.2 FPM (FastCGI Process Manager) をベースイメージとして使用
 # FPMはNginxからのリクエストを受け取りPHPを実行する仕組みです
-FROM php:8.2-fpm
+FROM php:8.4-fpm
 
 # システムパッケージのインストール
 # git: Composerのパッケージ取得に必要
