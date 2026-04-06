@@ -1,66 +1,70 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/context/AuthContext";
 import { clientApi } from "@/lib/axios";
 import Header from "@/components/Header";
 import type { Post } from "@/types";
+
+const postSchema = z.object({
+  title:   z.string().min(1, "タイトルを入力してください").max(255),
+  excerpt: z.string().max(500, "500文字以内で入力してください").optional(),
+  body:    z.string().min(1, "本文を入力してください"),
+  status:  z.enum(["draft", "published"]),
+});
+
+type PostFormValues = z.infer<typeof postSchema>;
 
 export default function EditPostPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const { slug } = useParams<{ slug: string }>();
 
-  const [title, setTitle] = useState("");
-  const [excerpt, setExcerpt] = useState("");
-  const [body, setBody] = useState("");
-  const [status, setStatus] = useState<"draft" | "published">("draft");
-  const [fetching, setFetching] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const {
+    register,
+    handleSubmit,
+    setError,
+    reset,         // フォームの値を外部データでリセット（既存記事の読み込みに使用）
+    formState: { errors, isSubmitting, isLoading },
+  } = useForm<PostFormValues>({
+    resolver: zodResolver(postSchema),
+  });
 
-  // 未ログインならログインページへ
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
-    }
+    if (!loading && !user) router.push("/login");
   }, [user, loading, router]);
 
-  // 既存の記事データを取得してフォームに反映
+  // 既存記事を取得してフォームにセット
   useEffect(() => {
     if (!user) return;
-    clientApi
-      .get<Post>(`/posts/${slug}`)
-      .then((res) => {
-        const post = res.data;
-        setTitle(post.title);
-        setExcerpt(post.excerpt ?? "");
-        setBody(post.body);
-        setStatus(post.status);
-      })
-      .catch(() => setError("記事の取得に失敗しました。"))
-      .finally(() => setFetching(false));
-  }, [user, slug]);
+    clientApi.get<Post>(`/posts/${slug}`).then((res) => {
+      // reset() で既存データをフォームの初期値として流し込む
+      reset({
+        title:   res.data.title,
+        excerpt: res.data.excerpt ?? "",
+        body:    res.data.body,
+        status:  res.data.status,
+      });
+    });
+  }, [user, slug, reset]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSubmitting(true);
-
+  const onSubmit = async (data: PostFormValues) => {
     try {
-      await clientApi.put(`/posts/${slug}`, { title, excerpt, body, status });
+      await clientApi.put(`/posts/${slug}`, data);
       router.push("/admin");
     } catch (err: unknown) {
-      const res = (err as { response?: { data?: { message?: string } } }).response;
-      setError(res?.data?.message ?? "更新に失敗しました。");
-    } finally {
-      setSubmitting(false);
+      const message = (err as { response?: { data?: { message?: string } } })
+        .response?.data?.message ?? "更新に失敗しました。";
+      setError("root", { message });
     }
   };
 
-  if (loading || fetching) {
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-400">読み込み中...</p>
@@ -79,95 +83,81 @@ export default function EditPostPage() {
           </Link>
         </div>
 
-        {error && (
-          <p className="text-red-500 text-sm mb-4 bg-red-50 p-3 rounded">{error}</p>
+        {errors.root && (
+          <p className="text-red-500 text-sm mb-4 bg-red-50 p-3 rounded">
+            {errors.root.message}
+          </p>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          {/* タイトル */}
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               タイトル <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
+              {...register("title")}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
             />
+            {errors.title && (
+              <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>
+            )}
           </div>
 
-          {/* 概要 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               概要
               <span className="text-xs text-gray-400 ml-2">（一覧ページに表示されます）</span>
             </label>
             <textarea
-              value={excerpt}
-              onChange={(e) => setExcerpt(e.target.value)}
+              {...register("excerpt")}
               rows={2}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none"
             />
+            {errors.excerpt && (
+              <p className="text-red-500 text-xs mt-1">{errors.excerpt.message}</p>
+            )}
           </div>
 
-          {/* 本文 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               本文 <span className="text-red-400">*</span>
             </label>
             <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              required
+              {...register("body")}
               rows={16}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gray-400 resize-y"
             />
+            {errors.body && (
+              <p className="text-red-500 text-xs mt-1">{errors.body.message}</p>
+            )}
           </div>
 
-          {/* 公開ステータス */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               公開ステータス
             </label>
             <div className="flex gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  value="draft"
-                  checked={status === "draft"}
-                  onChange={() => setStatus("draft")}
-                  className="accent-gray-700"
-                />
+                <input type="radio" value="draft" {...register("status")} className="accent-gray-700" />
                 <span className="text-sm text-gray-700">下書き</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  value="published"
-                  checked={status === "published"}
-                  onChange={() => setStatus("published")}
-                  className="accent-gray-700"
-                />
+                <input type="radio" value="published" {...register("status")} className="accent-gray-700" />
                 <span className="text-sm text-gray-700">公開</span>
               </label>
             </div>
           </div>
 
-          {/* 送信ボタン */}
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
-              disabled={submitting}
+              disabled={isSubmitting}
               className="bg-gray-900 text-white rounded px-6 py-2 text-sm font-medium hover:bg-gray-700 disabled:opacity-50"
             >
-              {submitting ? "更新中..." : "更新する"}
+              {isSubmitting ? "更新中..." : "更新する"}
             </button>
-            <Link
-              href="/admin"
-              className="border border-gray-300 text-gray-600 rounded px-6 py-2 text-sm hover:bg-gray-50"
-            >
+            <Link href="/admin" className="border border-gray-300 text-gray-600 rounded px-6 py-2 text-sm hover:bg-gray-50">
               キャンセル
             </Link>
           </div>
