@@ -12,8 +12,17 @@ backend/database/database.sqlite
 # ===== Next.js =====
 frontend/node_modules/
 frontend/.next/
-frontend/.env.local
-frontend/.env.*.local
+frontend/out/
+frontend/build/
+frontend/.env*
+frontend/.vercel
+frontend/coverage/
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
+frontend/*.pem
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
 
 # ===== Docker =====
 # MySQLのデータは永続化ボリュームで管理するのでgit管理外
