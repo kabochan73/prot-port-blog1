@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\UploadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,6 +39,9 @@ Route::get('/posts/{post}', [PostController::class, 'show']);
 // Authorizationヘッダーに有効なBearerトークンが必要
 // ========================================
 Route::middleware('auth:sanctum')->group(function () {
+    // 画像アップロード
+    Route::post('/upload', [UploadController::class, 'image']);
+
 
     // ログアウト → 現在のトークンを削除
     Route::post('/logout', [AuthController::class, 'logout']);

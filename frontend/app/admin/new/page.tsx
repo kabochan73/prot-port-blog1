@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -35,14 +35,35 @@ export default function NewPostPage() {
   });
 
   const status = watch("status");
+  const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
   }, [user, loading, router]);
 
+  // ファイル選択時に即アップロード
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("image", file);
+    try {
+      const res = await clientApi.post<{ url: string }>("/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setThumbnail(res.data.url);
+    } catch {
+      alert("画像のアップロードに失敗しました。");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const onSubmit = async (data: PostFormValues) => {
     try {
-      await clientApi.post("/posts", data);
+      await clientApi.post("/posts", { ...data, thumbnail });
       router.push("/admin");
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })
@@ -120,6 +141,27 @@ export default function NewPostPage() {
             />
             {errors.body && (
               <p className="text-red-500 text-xs mt-1">{errors.body.message}</p>
+            )}
+          </div>
+
+          {/* サムネイル */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              サムネイル画像
+              <span className="text-xs text-gray-400 ml-2">（JPEG / PNG / WebP・2MB以内）</span>
+            </label>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleImageChange}
+              className="text-sm text-gray-600"
+            />
+            {uploading && <p className="text-xs text-gray-400 mt-1">アップロード中...</p>}
+            {thumbnail && (
+              <div className="mt-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={thumbnail} alt="サムネイルプレビュー" className="rounded object-cover w-60 h-[135px]" />
+              </div>
             )}
           </div>
 
