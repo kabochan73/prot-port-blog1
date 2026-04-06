@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {
@@ -16,13 +17,27 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 管理者ユーザーを作成
-        // パスワードは "password" (開発用)
+        // ロールを作成
+        // admin: 記事のCRUD + ユーザー管理
+        // editor: 記事の作成・編集のみ
+        $adminRole  = Role::create(['name' => 'admin']);
+        $editorRole = Role::create(['name' => 'editor']);
+
+        // 管理者ユーザーを作成してadminロールを付与
         $admin = User::create([
             'name'     => '管理者',
             'email'    => 'admin@example.com',
             'password' => 'password',
         ]);
+        $admin->assignRole($adminRole);
+
+        // 編集者ユーザーを作成してeditorロールを付与
+        $editor = User::create([
+            'name'     => '編集者',
+            'email'    => 'editor@example.com',
+            'password' => 'password',
+        ]);
+        $editor->assignRole($editorRole);
 
         // サンプル記事を3件作成
         $samplePosts = [

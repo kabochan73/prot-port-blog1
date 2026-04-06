@@ -55,6 +55,11 @@ class PostController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        // admin または editor ロールのみ記事を作成できる
+        if (! $request->user()->hasAnyRole(['admin', 'editor'])) {
+            return response()->json(['message' => '権限がありません。'], 403);
+        }
+
         $validated = $request->validate([
             'title'        => 'required|string|max:255',
             'excerpt'      => 'nullable|string|max:500',
@@ -128,9 +133,9 @@ class PostController extends Controller
      */
     public function destroy(Request $request, Post $post): JsonResponse
     {
-        // 自分の記事のみ削除可能
-        if ($post->user_id !== $request->user()->id) {
-            return response()->json(['message' => '権限がありません。'], 403);
+        // adminロールのみ削除可能
+        if (! $request->user()->hasRole('admin')) {
+            return response()->json(['message' => '削除はadminのみ可能です。'], 403);
         }
 
         $post->delete();
